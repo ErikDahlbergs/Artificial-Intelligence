@@ -1,0 +1,53 @@
+import numpy as np
+
+# define grid dimensions
+grid_width = 10
+grid_height = 10
+
+# define initial probability distribution
+initial_distribution = np.ones((grid_width, grid_height)) / (grid_width * grid_height)
+
+def localize(sensor_reading, has_sensor_reading, true_x, true_y, true_h, curr_x, curr_y, curr_x_err, curr_y_err, prob_distribution):
+    # define movement and sensor error probabilities
+    move_error_prob = 0.3
+    sensor_error_prob = 0.1
+    
+    # create a copy of the probability distribution
+    new_prob_distribution = np.copy(prob_distribution)
+    
+    # check if sensor reading is available
+    if has_sensor_reading:
+        # update the probability distribution based on sensor reading
+        for x in range(grid_width):
+            for y in range(grid_height):
+                if sensor_reading == (x, y):
+                    new_prob_distribution[x, y] *= (1 - sensor_error_prob)
+                else:
+                    new_prob_distribution[x, y] *= sensor_error_prob
+        # normalize probability distribution
+        new_prob_distribution /= np.sum(new_prob_distribution)
+    
+    # calculate new probability distribution based on movement
+    for x in range(grid_width):
+        for y in range(grid_height):
+            # calculate new position based on movement and direction
+            move_x = x + (np.cos(true_h*np.pi/2) * 1) # 1 is the movement step
+            move_y = y + (np.sin(true_h*np.pi/2) * 1)
+            
+            # check if new position is within the grid
+            if 0 <= move_x < grid_width and 0 <= move_y < grid_height:
+                # update probability based on movement error
+                new_prob_distribution[move_x, move_y] *= (1 - move_error_prob)
+                # add probability to adjacent cells based on movement error
+                for dx in [-1, 0, 1]:
+                    for dy in [-1, 0, 1]:
+                        if dx != 0 or dy != 0:
+                            adj_x = move_x + dx
+                            adj_y = move_y + dy
+                            if 0 <= adj_x < grid_width and 0 <= adj_y < grid_height:
+                                new_prob_distribution[adj_x, adj_y] += (move_error_prob / 8) * prob_distribution[x, y]
+    
+    # normalize probability distribution
+    new_prob_distribution /= np.sum(new_prob_distribution)
+    
+    return new_prob_distribution
